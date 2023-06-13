@@ -89,10 +89,10 @@ else:
     
     
 
-C_impianto = 100  # Costo dell'impianto solare in euro/kW
-C_batteria = 10   # Costo della batteria di accumulo in euro/kW
+C_impianto = 1000  # Costo dell'impianto solare in euro/kW
+C_batteria = 500   # Costo della batteria di accumulo in euro/kW
 C_elettrica = 0.3  # Costo dell'energia elettrica dalla rete in euro/kWh
-E_consumo = 20    # Consumo energetico giornaliero dell'abitazione in kWh
+E_consumo = 40    # Consumo energetico giornaliero dell'abitazione in kWh
 p_max_impianto = 6  # Potenza massima dell'impianto solare in kW
 p_max_batteria = 10  # Capacità massima della batteria di accumulo in kW
 
@@ -112,6 +112,7 @@ def objective(x, C_impianto, C_batteria, C_elettrica, E_consumo):
     E_impianto_usata = np.sum(np.minimum(solar_curve, E_consumo / 24))  # Energia usata dall'impianto durante il giorno
     E_impianto_venduta = E_impianto_generata - E_impianto_usata  # Energia venduta dall'impianto durante il giorno
     E_batteria_usata = np.sum(np.minimum(solar_curve + battery_energy, E_consumo / 24))  # Energia usata dalla batteria durante il giorno
+    print("E_impianto_usata:", E_impianto_usata, "E_impianto_venduta",E_impianto_venduta,"E_batteria_usata",E_batteria_usata)
     
     plt.figure(figsize=(10, 6))
     plt.plot(hours, solar_curve, label="Energia prodotta")
@@ -131,22 +132,26 @@ def objective(x, C_impianto, C_batteria, C_elettrica, E_consumo):
 def constraint(x):
     P_impianto, P_batteria = x
     if P_impianto==0:
-        return 0
-    else :
         return P_batteria
+    else :
+        return 0
 
-bounds = [(0, p_max_impianto), (0, p_max_batteria)]
+bounds = [
+    (3, p_max_impianto), (5, p_max_batteria)
+    ]
 # Vincoli
 cons = [
-        #{'type': 'eq', 'fun': constraint}
+        {'type': 'eq', 'fun': constraint}
         ]
 
 # Valori iniziali delle variabili decisionali
-x0 = [0, 0]
+x0 = [3, 5]
 
 # Ottimizzazione
 res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica, E_consumo),
-               constraints=cons,bounds=bounds, options={'disp': True})
+               #constraints=cons,
+               bounds=bounds,
+               options={'disp': True})
 
 # Risultati
 print("Stato dell'ottimizzazione:", res.success)
