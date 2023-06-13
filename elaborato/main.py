@@ -63,13 +63,42 @@ else:
     
     
 #impianto solare con accumolo
-energy_used = np.sum(np.minimum(solar_curve+battery_energy, demand/24))*365* life
-energy_sell= energy_generated-energy_used
-solar_lifetime_cost = grid_price_kw*energy_used +  grid_price_sell_kw*energy_sell -(storage_max_kw*storage_price_kw)-(solar_max_kwh*solar_price_kw)
-print("Energia usata dall'impianto solare:", energy_used)
-print("Energia venduta dall'impianto solare:", energy_sell)
-print("risparmio dell'energia generata dall'impianto solare con accumolo:", solar_lifetime_cost)
-if solar_lifetime_cost > grid_energy_cost:
-    print("Conviene l'installazione dell'impianto solare.")
+storage_energy_used = np.sum(np.minimum(solar_curve+battery_energy, demand/24))*365* life
+storage_energy_sell= energy_generated-storage_energy_used
+storage_solar_lifetime_cost = grid_price_kw*storage_energy_used +  grid_price_sell_kw*storage_energy_sell -(storage_max_kw*storage_price_kw)-(solar_max_kwh*solar_price_kw)
+print("Energia usata dall'impianto solare:", storage_energy_used)
+print("Energia venduta dall'impianto solare:", storage_energy_sell)
+print("risparmio dell'energia generata dall'impianto solare con accumolo:", storage_solar_lifetime_cost)
+if storage_solar_lifetime_cost > grid_energy_cost:
+    print("Conviene l'installazione dell'impianto solare con accumolo.")
 else:
-    print("Non conviene l'installazione dell'impianto solare.")
+    print("Non conviene l'installazione dell'impianto solare con accumolo.")
+
+# Definizione della funzione obiettivo per la programmazione lineare
+def objective(x):
+    solar_cost = x[0] * solar_price_kw
+    storage_cost = x[1] * storage_price_kw
+    grid_cost = x[2] * grid_price_kw
+    return solar_cost + storage_cost + grid_cost
+
+# Definizione dei vincoli per la programmazione lineare
+def constraint(x):
+    solar_cost = x[0] * solar_price_kw
+    storage_cost = x[1] * storage_price_kw
+    grid_cost = x[2] * grid_price_kw
+    energy_generated = x[0] * solar_max_kwh * 365 * life
+    energy_used = x[0] * np.sum(np.minimum(solar_curve, demand/24)) * 365 * life
+    energy_sell = energy_generated - energy_used
+    return [energy_generated, energy_used, energy_sell, solar_cost, storage_cost, grid_cost]
+
+# Risoluzione del problema di programmazione lineare
+res = linprog(c=[solar_price_kw, storage_price_kw, grid_price_kw], A_ub=[[-1, 0, 0], [0, -1, 0], [0, 0, -1]], b_ub=[0, 0, 0], A_eq=[[solar_max_kwh * 365 * life, 0, 0], [1, 1, 1], [1, 1, 1], [0, 1, 0]], b_eq=[demand * 365 * life, solar_max_kwh * 365 * life, storage_max_kw * 365 * life, 0], bounds=[(0, solar_max_kwh), (0, storage_max_kw), (0, np.inf)])    
+# Estrazione dei risultati
+solar_installation = res.x[0]
+battery_installation = res.x[1]
+total_cost = res.fun
+
+# Stampa dei risultati
+print("Impianto solare installato:", solar_installation)
+print("Batteria installata:", battery_installation)
+print("Costo totale:", total_cost)
