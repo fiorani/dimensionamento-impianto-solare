@@ -122,34 +122,30 @@ def objective(x, C_impianto, C_batteria, C_elettrica, E_consumo):
     plt.legend()
     plt.grid(True)
     plt.show()
-    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + (E_consumo - E_impianto_usata + E_batteria_usata + E_impianto_venduta) * C_elettrica
+    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + (E_consumo - E_impianto_usata - E_batteria_usata - E_impianto_venduta) * C_elettrica
     print("Costo totale iterazione:", costo_totale, "euro potenza impianto",P_impianto,"potenza batteria",P_batteria)
     return costo_totale
 
 # Vincoli
-def constraint1(x):
-    P_impianto, _ = x
-    return P_impianto - p_max_impianto
 
-def constraint2(x):
+def constraint(x):
     P_impianto, P_batteria = x
-    return P_batteria - p_max_batteria
+    if P_impianto==0:
+        return P_batteria
+    else :
+        return 0
 
-def constraint3(x):
-    P_impianto, P_batteria = x
-    return [P_impianto, P_batteria]
-
+bounds = [(0, p_max_impianto), (0, p_max_batteria)]
 # Vincoli
-cons = [{'type': 'ineq', 'fun': constraint1},
-        {'type': 'ineq', 'fun': constraint2},
-        {'type': 'ineq', 'fun': constraint3}]
+cons = [
+        {'type': 'ineq', 'fun': constraint}]
 
 # Valori iniziali delle variabili decisionali
 x0 = [0, 0]
 
 # Ottimizzazione
 res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica, E_consumo),
-               constraints=cons, options={'disp': True})
+               constraints=cons,bounds=bounds, options={'disp': True})
 
 # Risultati
 print("Stato dell'ottimizzazione:", res.success)
