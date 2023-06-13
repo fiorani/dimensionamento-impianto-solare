@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.optimize import linprog
+from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 
 # Consumi
@@ -73,4 +74,88 @@ if storage_solar_lifetime_cost > grid_energy_cost:
     print("Conviene l'installazione dell'impianto solare con accumolo.")
 else:
     print("Non conviene l'installazione dell'impianto solare con accumolo.")
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+C_impianto = 1000  # Costo dell'impianto solare in euro/kW
+C_batteria = 500   # Costo della batteria di accumulo in euro/kW
+C_elettrica = 0.3  # Costo dell'energia elettrica dalla rete in euro/kWh
+E_consumo = 20    # Consumo energetico giornaliero dell'abitazione in kWh
+p_max_impianto = 6  # Potenza massima dell'impianto solare in kW
+p_max_batteria = 10  # Capacità massima della batteria di accumulo in kW
+
+def objective(x, C_impianto, C_batteria, C_elettrica, E_consumo):
+    P_impianto, P_batteria = x
+    
+    hours = np.arange(0, 24)
+    solar_curve = P_impianto * np.sin(np.pi * (hours - 7) / 12)  # Funzione sinusoidale per rappresentare la generazione solare
+    solar_curve = np.maximum(solar_curve, 0)  # Imposta a 0 la generazione solare quando è negativa
+    battery_energy = np.zeros_like(solar_curve)  # Inizializza l'array per l'energia accumulata nella batteria
+    for i in range(1, len(hours)):
+        excess_energy = max(solar_curve[i] - E_consumo / 24, 0)  # Energia in eccesso rispetto alla domanda
+        deficit_energy = max(E_consumo / 24 - solar_curve[i], 0)  # Energia mancante rispetto alla domanda
+        battery_energy[i] = battery_energy[i-1] + excess_energy - deficit_energy
+        battery_energy[i] = max(0, min(battery_energy[i], P_batteria))
+    E_impianto_generata = np.sum(solar_curve)  # Energia generata durante il giorno
+    E_impianto_usata = np.sum(np.minimum(solar_curve, E_consumo / 24))  # Energia usata dall'impianto durante il giorno
+    E_impianto_venduta = E_impianto_generata - E_impianto_usata  # Energia venduta dall'impianto durante il giorno
+    E_batteria_usata = np.sum(np.minimum(solar_curve + battery_energy, E_consumo / 24))  # Energia usata dalla batteria durante il giorno
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(hours, solar_curve, label="Energia prodotta")
+    plt.plot(hours, battery_energy, label="Batteria")
+    plt.plot(hours, np.full_like(hours, E_consumo)/24, label="Consumo")
+    plt.xlabel("Ore del giorno")
+    plt.ylabel("Potenza (kW)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + (E_consumo - E_impianto_usata + E_batteria_usata + E_impianto_venduta) * C_elettrica
+    print("Costo totale iterazione:", costo_totale, "euro potenza impianto",P_impianto,"potenza batteria",P_batteria)
+    return costo_totale
+
+# Vincoli
+def constraint1(x):
+    P_impianto, _ = x
+    return P_impianto - p_max_impianto
+
+def constraint2(x):
+    P_impianto, P_batteria = x
+    return P_batteria - p_max_batteria
+
+def constraint3(x):
+    P_impianto, P_batteria = x
+    return [P_impianto, P_batteria]
+
+# Vincoli
+cons = [{'type': 'ineq', 'fun': constraint1},
+        {'type': 'ineq', 'fun': constraint2},
+        {'type': 'ineq', 'fun': constraint3}]
+
+# Valori iniziali delle variabili decisionali
+x0 = [0, 0]
+
+# Ottimizzazione
+res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica, E_consumo),
+               constraints=cons, options={'disp': True})
+
+# Risultati
+print("Stato dell'ottimizzazione:", res.success)
+print("Messaggio dell'ottimizzazione:", res.message)
+print("Potenza dell'impianto solare ottimale:", res.x[0], "kW")
+print("Potenza della batteria di accumulo ottimale:", res.x[1], "kW")
+print("Costo totale dell'energia elettrica:", res.fun, "euro")
+
 
