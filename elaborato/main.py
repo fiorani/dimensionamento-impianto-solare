@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 # Consumi
 demand = 45  # Domanda energetica in kW che vale al giorno
 grid_price_kw = 0.30  # Tariffe al kW dell'energia elettrica
-grid_price_sell_kw = 0.10  # Tariffe al kW dell'energia elettrica venduta
+grid_price_sell_kw = 0.05  # Tariffe al kW dell'energia elettrica venduta
 
 # Sistema solare
 solar_max_kwh  = 6  # Massima potenza in kW generabile dai pannelli solari
 solar_degradation = 0.05  # Fattore di degrado annuale dei pannelli solari
-solar_price_kw = 500  # Prezzo al kW del sistema solare
+solar_price_kw = 50  # Prezzo al kW del sistema solare
 
 # Batteria
 storage_max_kw  = 10  # Capacità in kW massima della batteria
-storage_price_kw = 1000  # Prezzo al kW della batteria
+storage_price_kw = 10  # Prezzo al kW della batteria
 storage_degradation = 0.10  # Fattore di degrado annuale dello stoccaggio dell'energia
 
 # Durata
@@ -74,31 +74,3 @@ if storage_solar_lifetime_cost > grid_energy_cost:
 else:
     print("Non conviene l'installazione dell'impianto solare con accumolo.")
 
-# Definizione della funzione obiettivo per la programmazione lineare
-def objective(x):
-    solar_cost = x[0] * solar_price_kw
-    storage_cost = x[1] * storage_price_kw
-    grid_cost = x[2] * grid_price_kw
-    return solar_cost + storage_cost + grid_cost
-
-# Definizione dei vincoli per la programmazione lineare
-def constraint(x):
-    solar_cost = x[0] * solar_price_kw
-    storage_cost = x[1] * storage_price_kw
-    grid_cost = x[2] * grid_price_kw
-    energy_generated = x[0] * solar_max_kwh * 365 * life
-    energy_used = x[0] * np.sum(np.minimum(solar_curve, demand/24)) * 365 * life
-    energy_sell = energy_generated - energy_used
-    return [energy_generated, energy_used, energy_sell, solar_cost, storage_cost, grid_cost]
-
-# Risoluzione del problema di programmazione lineare
-res = linprog(c=[solar_price_kw, storage_price_kw, grid_price_kw], A_ub=[[-1, 0, 0], [0, -1, 0], [0, 0, -1]], b_ub=[0, 0, 0], A_eq=[[solar_max_kwh * 365 * life, 0, 0], [1, 1, 1], [1, 1, 1], [0, 1, 0]], b_eq=[demand * 365 * life, solar_max_kwh * 365 * life, storage_max_kw * 365 * life, 0], bounds=[(0, solar_max_kwh), (0, storage_max_kw), (0, np.inf)])    
-# Estrazione dei risultati
-solar_installation = res.x[0]
-battery_installation = res.x[1]
-total_cost = res.fun
-
-# Stampa dei risultati
-print("Impianto solare installato:", solar_installation)
-print("Batteria installata:", battery_installation)
-print("Costo totale:", total_cost)
