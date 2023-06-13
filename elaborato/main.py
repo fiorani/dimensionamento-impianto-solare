@@ -89,8 +89,8 @@ else:
     
     
 
-C_impianto = 1000  # Costo dell'impianto solare in euro/kW
-C_batteria = 500   # Costo della batteria di accumulo in euro/kW
+C_impianto = 100  # Costo dell'impianto solare in euro/kW
+C_batteria = 10   # Costo della batteria di accumulo in euro/kW
 C_elettrica = 0.3  # Costo dell'energia elettrica dalla rete in euro/kWh
 E_consumo = 20    # Consumo energetico giornaliero dell'abitazione in kWh
 p_max_impianto = 6  # Potenza massima dell'impianto solare in kW
@@ -131,14 +131,15 @@ def objective(x, C_impianto, C_batteria, C_elettrica, E_consumo):
 def constraint(x):
     P_impianto, P_batteria = x
     if P_impianto==0:
-        return P_batteria
-    else :
         return 0
+    else :
+        return P_batteria
 
 bounds = [(0, p_max_impianto), (0, p_max_batteria)]
 # Vincoli
 cons = [
-        {'type': 'ineq', 'fun': constraint}]
+        #{'type': 'eq', 'fun': constraint}
+        ]
 
 # Valori iniziali delle variabili decisionali
 x0 = [0, 0]
