@@ -170,7 +170,7 @@ print("Costo totale dell'energia elettrica:", res.fun, "euro")
     
 
 
-ore = 56  # numero di ore
+ore = 24  # numero di ore
 C_impianto = 250/(25*365) # Costo dell'impianto solare in euro/kW all'ora (500 euro/kW in 25 anni)
 C_batteria = 500/(10*365)  # Costo della batteria di accumulo in euro/kW all'ora (1000 euro/kW in 10 anni)
 C_elettrica_acquistata = 0.3  # Costo dell'energia elettrica dalla rete in euro/kWh
@@ -180,7 +180,7 @@ p_max_batteria = 15  # Capacità massima della batteria di accumulo in kW
 E_consumo = np.zeros(ore*60)  # Inizializza l'array con tutti gli elementi a 0
 
 for i in range(ore*60):
-    E_consumo[i] = 1/60
+    E_consumo[i] = 0
     if(i >1000):
         E_consumo[i] = 1/60
     
@@ -212,7 +212,7 @@ def objective(x, C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_ele
     E_impianto_usata = E_impianto_generata - np.sum(battery_charge) - np.sum(eccesso) 
     E_batteria_usata = np.sum(battery_discharge)
     E_acquistata=np.sum(E_consumo) - E_impianto_usata - E_batteria_usata
-    print("P_impianto:",P_impianto,"P_batteria:", P_batteria,"E_impianto_generata:", E_impianto_generata,"E_impianto_usata:", E_impianto_usata, "E_impianto_venduta",E_impianto_venduta,"E_batteria_usata",E_batteria_usata,"E_acquistata",E_acquistata)
+    
     plt.figure(figsize=(24, 6))
     plt.plot(minutes/60, solar_curve*60, label="Energia prodotta")
     plt.plot(minutes/60, battery_energy*60, label="Batteria")
@@ -220,25 +220,41 @@ def objective(x, C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_ele
     plt.plot(minutes/60, battery_charge*60, label="Batteria ricarica")
     plt.plot(minutes/60, battery_discharge*60, label="Batteria scarica")
     plt.plot(minutes/60, E_consumo*60, label="Consumo")
-    plt.xlabel("Minuti del giorno")
+    plt.xlabel("ore")
     plt.ylabel("Potenza (kW)")
     plt.legend()
     plt.grid(True)
     plt.show()
     
-    #print("Costo totale iterazione:", costo_totale, "euro potenza impianto",P_impianto,"potenza batteria",P_batteria)
-    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + E_acquistata * C_elettrica_acquistata -C_elettrica_venduta*E_impianto_venduta
+   
+    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + E_acquistata * C_elettrica_acquistata - C_elettrica_venduta * E_impianto_venduta
+    print("P_impianto:",P_impianto,"P_batteria:", P_batteria,"Costo totale iterazione:", costo_totale,"E_impianto_generata:", E_impianto_generata,"E_impianto_usata:", E_impianto_usata, "E_impianto_venduta",E_impianto_venduta,"E_batteria_usata",E_batteria_usata,"E_acquistata",E_acquistata)
     return costo_totale
 
-bounds = [
-    (0, p_max_impianto), (5, p_max_batteria)
-]
+def constraint(x):
+    P_impianto, P_batteria = x
+    if P_impianto == 0:
+        return P_impianto
+    else:
+        return P_batteria
+def constraint1(x):
+    P_impianto, P_batteria = x
+    return [P_impianto, P_batteria]
+def constraint2(x):
+    P_impianto, P_batteria = x
+    return [p_max_impianto - P_impianto, p_max_batteria - P_batteria]  # Restituisce una lista con le differenze
 
+# Definizione dei vincoli
+cons = [#{'type': 'eq', 'fun': constraint},
+       # {'type': 'ineq', 'fun': constraint1},
+       #{'type': 'ineq', 'fun': constraint2}
+       ]
+bounds = [(0, p_max_impianto), (0, p_max_batteria)]
 # Valori iniziali delle variabili decisionali
-x0 = [3, 3]
-
+x0 = [3, 5]
+options = { 'eps': [1, 1]}
 # Ottimizzazione
-res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_elettrica_venduta),bounds=bounds)
+res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_elettrica_venduta),bounds=bounds,constraints=cons,tol=1e-2,options=options)
 
 # Risultati
 print("Stato dell'ottimizzazione:", res.success)
