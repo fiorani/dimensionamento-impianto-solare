@@ -180,7 +180,7 @@ p_max_batteria = 15  # Capacità massima della batteria di accumulo in kW
 E_consumo = np.zeros(ore*60)  # Inizializza l'array con tutti gli elementi a 0
 
 for i in range(ore*60):
-    E_consumo[i] = 0
+    E_consumo[i] =1/60
     if(i >1000):
         E_consumo[i] = 1/60
     
@@ -212,6 +212,7 @@ def objective(x, C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_ele
     E_impianto_usata = E_impianto_generata - np.sum(battery_charge) - np.sum(eccesso) 
     E_batteria_usata = np.sum(battery_discharge)
     E_acquistata=np.sum(E_consumo) - E_impianto_usata - E_batteria_usata
+    E_risparmiata=np.sum(E_consumo) - E_acquistata
     
     plt.figure(figsize=(24, 6))
     plt.plot(minutes/60, solar_curve*60, label="Energia prodotta")
@@ -227,7 +228,7 @@ def objective(x, C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_ele
     plt.show()
     
    
-    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + E_acquistata * C_elettrica_acquistata - C_elettrica_venduta * E_impianto_venduta
+    costo_totale = C_impianto * P_impianto + C_batteria * P_batteria + E_acquistata * C_elettrica_acquistata - C_elettrica_venduta * E_impianto_venduta -E_risparmiata* C_elettrica_acquistata
     print("P_impianto:",P_impianto,"P_batteria:", P_batteria,"Costo totale iterazione:", costo_totale,"E_impianto_generata:", E_impianto_generata,"E_impianto_usata:", E_impianto_usata, "E_impianto_venduta",E_impianto_venduta,"E_batteria_usata",E_batteria_usata,"E_acquistata",E_acquistata)
     return costo_totale
 
@@ -251,7 +252,7 @@ cons = [#{'type': 'eq', 'fun': constraint},
        ]
 bounds = [(0, p_max_impianto), (0, p_max_batteria)]
 # Valori iniziali delle variabili decisionali
-x0 = [3, 5]
+x0 = [0, 0]
 options = { 'eps': [1, 1]}
 # Ottimizzazione
 res = minimize(objective, x0, args=(C_impianto, C_batteria, C_elettrica_acquistata, E_consumo,C_elettrica_venduta),bounds=bounds,constraints=cons,tol=1e-2,options=options)
